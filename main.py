@@ -9,9 +9,18 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import json
 
-notes = []
+#notes = {
+#    "Ласкаво просимо":{
+#        "текст":"Вітаю в моїй супер крутій програмі",
+#        "теги":["тег1","тег2"]
+#    }
+    
 
+#}
+#with open("notes.json", "w", encoding="utf-8") as file:
+#    json.dump(notes, file)
 
 
 
@@ -19,13 +28,17 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.setFixedSize(773, 578)
+        font = QtGui.QFont()
+        font.setPointSize(6.5)
+        font1 = QtGui.QFont()
+        font1.setPointSize(7)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.textEdit = QtWidgets.QTextEdit(self.centralwidget)
         self.textEdit.setGeometry(QtCore.QRect(10, 10, 441, 521))
         self.textEdit.setObjectName("textEdit")
         self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(460, 10, 81, 16))
+        self.label.setGeometry(QtCore.QRect(460, 10, 200, 16))
         self.label.setObjectName("label")
         self.listWidget = QtWidgets.QListWidget(self.centralwidget)
         self.listWidget.setGeometry(QtCore.QRect(460, 30, 301, 161))
@@ -40,7 +53,7 @@ class Ui_MainWindow(object):
         self.pushButton_3.setGeometry(QtCore.QRect(460, 230, 301, 23))
         self.pushButton_3.setObjectName("pushButton_3")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
-        self.label_2.setGeometry(QtCore.QRect(460, 260, 71, 16))
+        self.label_2.setGeometry(QtCore.QRect(460, 260, 200, 16))
         self.label_2.setObjectName("label_2")
         self.listWidget_2 = QtWidgets.QListWidget(self.centralwidget)
         self.listWidget_2.setGeometry(QtCore.QRect(460, 280, 301, 161))
@@ -54,9 +67,11 @@ class Ui_MainWindow(object):
         self.pushButton_4.setObjectName("pushButton_4")
         self.pushButton_5 = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_5.setGeometry(QtCore.QRect(620, 480, 141, 21))
+        self.pushButton_5.setFont(font)
         self.pushButton_5.setObjectName("pushButton_5")
         self.pushButton_6 = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_6.setGeometry(QtCore.QRect(460, 480, 141, 21))
+        self.pushButton_6.setFont(font1)
         self.pushButton_6.setObjectName("pushButton_6")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -72,17 +87,19 @@ class Ui_MainWindow(object):
 
         self.listWidget.itemClicked.connect(self.show_note)
         self.pushButton.clicked.connect(self.add_note)
+        self.pushButton_2.clicked.connect(self.del_note)
         self.pushButton_3.clicked.connect(self.save_text)
+        self.pushButton_6.clicked.connect(self.add_tag)
+        self.pushButton_5.clicked.connect(self.del_tag)
+        self.pushButton_4.clicked.connect(self.search_tag)
         
         
 
     def show_note(self):
         key = self.listWidget.selectedItems()[0].text()
-        for note in notes:
-            if note[0] == key:
-                self.textEdit.setText(notes[1])
-                self.listWidget_2.clear()
-                self.listWidget_2.addItems(notes[2])
+        self.textEdit.setText(notes[key]["текст"])
+        self.listWidget_2.clear()
+        self.listWidget_2.addItems(notes[key]["теги"])
 
         
     def retranslateUi(self, MainWindow):
@@ -101,33 +118,88 @@ class Ui_MainWindow(object):
     def add_note(self):
         name, ok = QtWidgets.QInputDialog.getText(self.centralwidget,"Додати замітку", "Назва замітки")
         if name != "" and ok:
-            note = [name,"",[]]
-            notes.append(note)
+            notes[name] = {"текст": "", "теги":[]}
             self.listWidget.addItem(name)
-            self.listWidget_2.addItems(note[2])
-            with open(str(len(notes)-1)+".txt", "w", encoding="utf-8") as file:
-                file.write(note[0]+"\n")
-
-
-
+    def del_note(self):
+        if self.listWidget.selectedItems():
+            key = self.listWidget.selectedItems()[0].text()
+            del notes[key]
+            self.listWidget.clear()
+            self.textEdit.clear()
+            self.listWidget_2.clear()
+            self.listWidget.addItems(notes)
+            with open("notes.json", "w", encoding="utf-8") as file:
+                json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        else:
+            win = QtWidgets.QMessageBox()
+            win.setText("Не обрана замітка для видалення.")
+            win.exec()
     def save_text(self):
         if self.listWidget.selectedItems():
             key = self.listWidget.selectedItems()[0].text()
-            i = 0
-            for note in notes:
-                if note[0] == key:
-                    note[1]=self.textEdit.toPlainText()
-                with open(str(i)+".txt", "w", encoding="utf-8") as file:
-                    file.write(note[0]+"\n")
-                    file.write(note[1]+"\n")
-                    for tag in note[2]:
-                        file.write(tag + " ")
-                    file.write("\n")
-            i+=1
+            notes[key]["текст"] = self.textEdit.toPlainText()
+            with open("notes.json", "w", encoding="utf-8") as file:
+                json.dump(notes, file, sort_keys=True, ensure_ascii=False)
         else:
             win = QtWidgets.QMessageBox()
-            win.setText("Не обрана замітка для збереження")
+            win.setText("Не обрана замітка для збереження.")
             win.exec()
+
+    def add_tag(self):
+        if self.listWidget.selectedItems():
+            key = self.listWidget.selectedItems()[0].text()
+            tag = self.lineEdit.text()
+            if not tag in notes[key]["теги"]:
+                notes[key]["теги"].append(tag)
+                self.listWidget_2.addItem(tag)
+                self.lineEdit.clear()
+                with open("notes.json", "w", encoding="utf-8") as file:
+                    json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        else:
+            win = QtWidgets.QMessageBox()
+            win.setText("боже...")
+            win.exec()
+
+
+    def del_tag(self):
+        if self.listWidget.selectedItems():
+            key = self.listWidget.selectedItems()[0].text()
+            tag = self.listWidget_2.selectedItems()[0].text()
+            notes[key]["теги"].remove(tag)
+            self.listWidget_2.clear()
+            self.listWidget_2.addItems(notes[key]["теги"])
+            with open("notes.json", "w", encoding="utf-8") as file:
+                json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        else:
+            win = QtWidgets.QMessageBox()
+            win.setText("боже...")
+            win.exec()
+
+    def search_tag(self):
+        tag = self.lineEdit.text()
+        if self.pushButton_4.text()=="Шукати замітки по тегу" and tag:
+            notes_filter = {}
+            for n in notes:
+                if tag in notes[n]["теги"]:
+                    notes_filter[n]=notes[n]
+            self.pushButton_4.setText("Очистити")
+            self.listWidget.clear()
+            self.listWidget_2.clear()
+            self.textEdit.clear()
+            self.listWidget.addItems(notes_filter)
+        elif self.pushButton_4.text()=="Очистити":
+            self.textEdit.clear()
+            self.listWidget.clear()
+            self.listWidget_2.clear()
+            self.lineEdit.clear()
+            self.listWidget.addItems(notes)
+            self.pushButton_4.setText("Шукати замітки по тегу")
+
+
+
+
+
+
 
 
 
@@ -140,23 +212,7 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
-
-    name = 0
-    note = []
-    while True:
-        filename = str(name)+".txt"
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                for line in file:
-                    line = line.replace("\n", "")
-                    note.append(line)
-            tags = note[2].split(" ")
-            note[2]=tags
-            notes.append(note)
-            note=[]
-            name+=1
-        except IOError:
-            break
-    for note in notes:
-        ui.listWidget.addItems(note[0])
+    with open("notes.json", "r", encoding="utf-8") as file:
+        notes = json.load(file)
+    ui.listWidget.addItems(notes)
     sys.exit(app.exec_())
